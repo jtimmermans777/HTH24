@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Locator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        #search-box {
+            width: 60%;
+            padding: 10px;
+            font-size: 1.2em;
+            border: 2px solid #2c3e50;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            margin: 0 auto;
+            border: 2px solid #2c3e50;
+            border-radius: 10px;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #16a085;
+            font-weight: bold;
+        }
+        #parking-details {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #2c3e50;
+        }
+        #route-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #16a085;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #route-button:hover {
+            background-color: #1abc9c;
+        }
+    </style>
+    <script src="KEY"></script>
+    <script>
+        let map;
+        let markers = [];
+        const parkingData = [
+            {"_id": 0, "freeSpots": 5, "totalSpots": 11, "latitude": 42.36448, "longitude": -70.89319},
+            {"_id": 1, "freeSpots": 17, "totalSpots": 23, "latitude": 42.27754, "longitude": -70.8787},
+            {"_id": 2, "freeSpots": 16, "totalSpots": 24, "latitude": 42.08917, "longitude": -71.34238},
+            {"_id": 3, "freeSpots": 23, "totalSpots": 30, "latitude": 42.06019, "longitude": -71.29891},
+            // Add more parking data as needed
+        ];
+
+        function initMap() {
+            const userLocation = { lat: 42.3601, lng: -71.0589 }; // Default location (e.g., Boston)
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: userLocation,
+                zoom: 12,
+            });
+
+            // Add markers for each parking spot
+            addParkingMarkers(parkingData);
+
+            const input = document.getElementById("search-box");
+            const searchBox = new google.maps.places.SearchBox(input);
+
+            map.addListener("bounds_changed", () => {
+                searchBox.setBounds(map.getBounds());
+            });
+
+            searchBox.addListener("places_changed", () => {
+                const places = searchBox.getPlaces();
+
+                if (places.length === 0) {
+                    return;
+                }
+
+                const place = places[0];
+                if (!place.geometry || !place.geometry.location) {
+                    console.log("Returned place contains no geometry");
+                    return;
+                }
+
+                // Center the map to the selected place
+                map.setCenter(place.geometry.location);
+
+                const userLat = place.geometry.location.lat();
+                const userLng = place.geometry.location.lng();
+                document.getElementById("result").innerText = `Selected Location: Latitude: ${userLat}, Longitude: ${userLng}`;
+
+                // Add marker for the selected location
+                addMarker({ lat: userLat, lng: userLng }, "Selected Location");
+
+                // Draw route to the closest parking spot
+                const closestParking = findClosestParking(userLat, userLng);
+                if (closestParking) {
+                    displayParkingDetails(closestParking, userLat, userLng);
+                } else {
+                    alert("No parking available near this location.");
+                    document.getElementById("parking-details").innerText = "";
+                }
+            });
+        }
+
+        function findClosestParking(userLat, userLng) {
+            let closestParking = null;
+            let minDistance = Infinity;
+
+            parkingData.forEach(parking => {
+                if (parking.freeSpots > 0) { // Check if there are free spots
+                    const distance = haversine(userLat, userLng, parking.latitude, parking.longitude);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestParking = parking;
+                    }
+                }
+            });
+
+            return closestParking;
+        }
+
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371.0; // Radius of the Earth in km
+            const phi1 = lat1 * Math.PI / 180;
+            const phi2 = lat2 * Math.PI / 180;
+            const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+            const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(deltaPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distance in km
+        }
+
+        function addParkingMarkers(parkingData) {
+            parkingData.forEach(parking => {
+                const position = { lat: parking.latitude, lng: parking.longitude };
+                addMarker(position, `Parking Lot ID: ${parking._id}, Free Spots: ${parking.freeSpots}`);
+            });
+        }
+
+        function displayParkingDetails(parking, userLat, userLng) {
+            const distance = haversine(userLat, userLng, parking.latitude, parking.longitude);
+            const routeUrl = `KEY`;
+
+            document.getElementById("parking-details").innerHTML = `
+                <h2>Closest Parking Spot Details</h2>
+                <p>Parking Lot ID: ${parking._id}</p>
+                <p>Free Spots: ${parking.freeSpots}</p>
+                <p>Total Spots: ${parking.totalSpots}</p>
+                <p>Distance: ${distance.toFixed(2)} km</p>
+                <p>User Location: Latitude: ${userLat}, Longitude: ${userLng}</p>
+                <a id="route-button" href="${routeUrl}" target="_blank">Get Directions</a>
+            `;
+        }
+
+        function addMarker(position, title) {
+            const marker = new google.maps.Marker({
+                position: position,
+                map: map,
+                title: title
+            });
+            markers.push(marker);
+        }
+    </script>
+</head>
+<body onload="initMap()">
+    <h1>Find the Closest Parking Spot</h1>
+    <input id="search-box" type="text" placeholder="Enter a location">
+    <div id="map"></div>
+    <p id="result"></p>
+    {% if closest_parking %}
+        <div id="closest-parking">
+            <h2>Closest Parking Spot Details</h2>
+            <p>Parking Lot ID: {{ closest_parking._id }}</p>
+            <p>Free Spots: {{ closest_parking.freeSpots }}</p>
+            <p>Total Spots: {{ closest_parking.totalSpots }}</p>
+            <p>Distance: {{ distance_km }} km</p>
+            <a id="route-button" href="KEY}},{{ closest_parking.longitude }}&origin={{ user_lat }},{{ user_lon }}" target="_blank">Get Directions</a>
+        </div>
+    {% elif error %}
+        <div id="error-message">
+            <p>{{ error }}</p>
+        </div>
+    {% endif %}
+    <div id="parking-details"></div>
+</body>
+</html>
