@@ -105,13 +105,12 @@
         ];
 
         function initMap() {
-            const userLocation = { lat: 42.3601, lng: -71.0589 }; // Default location (e.g., Boston)
+            const userLocation = { lat: 42.3601, lng: -71.0589 }; 
             map = new google.maps.Map(document.getElementById("map"), {
                 center: userLocation,
                 zoom: 12,
             });
 
-            // Add markers for each parking spot
             addParkingMarkers(parkingData);
 
             const input = document.getElementById("search-box");
@@ -134,17 +133,14 @@
                     return;
                 }
 
-                // Center the map to the selected place
+                
                 map.setCenter(place.geometry.location);
 
                 const userLat = place.geometry.location.lat();
                 const userLng = place.geometry.location.lng();
                 document.getElementById("result").innerText = `Selected Location: Latitude: ${userLat}, Longitude: ${userLng}`;
 
-                // Add marker for the selected location
                 addMarker({ lat: userLat, lng: userLng }, "Selected Location");
-
-                // Draw route to the closest parking spot
                 const closestParking = findClosestParking(userLat, userLng);
                 if (closestParking) {
                     displayParkingDetails(closestParking, userLat, userLng);
@@ -160,7 +156,7 @@
             let minDistance = Infinity;
 
             parkingData.forEach(parking => {
-                if (parking.freeSpots > 0) { // Check if there are free spots
+                if (parking.freeSpots > 0) {
                     const distance = haversine(userLat, userLng, parking.latitude, parking.longitude);
                     if (distance < minDistance) {
                         minDistance = distance;
@@ -173,14 +169,14 @@
         }
 
         function haversine(lat1, lon1, lat2, lon2) {
-            const R = 6371.0; // Radius of the Earth in km
+            const R = 6371.0; 
             const phi1 = lat1 * Math.PI / 180;
             const phi2 = lat2 * Math.PI / 180;
             const deltaPhi = (lat2 - lat1) * Math.PI / 180;
             const deltaLambda = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(deltaPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2;
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c; // Distance in km
+            return R * c;
         }
 
         function addParkingMarkers(parkingData) {
